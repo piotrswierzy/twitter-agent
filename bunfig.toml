@@ -1,0 +1,7 @@
+[install]
+# Enable Node.js compatibility mode
+node-compat = true
+
+[test]
+# Enable Node.js compatibility mode for tests
+node-compat = true 

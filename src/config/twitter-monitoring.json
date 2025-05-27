@@ -1,0 +1,30 @@
+{
+    "users": [
+        "avoanjali",
+        "edvinsdancigs",
+        "jnwng",
+        "jayendra_jog",
+        "sreeramkannan",
+        "aeyakovenko",
+        "yashhsm",
+        "0xMert_",
+        "0x_Abdul",
+        "0xBreadguy",
+        "torabyou",
+        "crispheaney",
+        "shawmakesmagic",
+        "1HowardWu",
+        "SmokeyTheBera"
+    ],
+    "hashtags": [
+        "Blockchain",
+        "Web3"
+    ],
+    "queries": [
+        "Smart contract OR Blockchain OR Web3 OR Tokens OR RWA OR Solana OR Ledger"
+    ],
+    "fetchSettings": {
+        "maxResults": 10,
+        "sortOrder": "relevancy"
+    }
+}
