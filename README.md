@@ -97,69 +97,171 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
-# Twitter AI Bot (NestJS + TypeORM)
+# Twitter AI Bot 🤖
 
-## Overview
-This project is a NestJS-based AI bot that monitors selected Twitter users or hashtags, generates tone-specific replies using OpenAI, sends replies for approval via a Telegram bot, and posts approved replies to Twitter. All data is logged in PostgreSQL using TypeORM.
+A NestJS-based AI bot that monitors Twitter, generates intelligent replies, and manages them through a Telegram approval workflow.
 
-## Features
-- **Twitter Monitoring**: Listen to tweets from defined users or hashtags and store them in the database.
-- **AI-Powered Reply Generation**: Use OpenAI API to generate replies in a custom tone.
-- **Approval Flow (Telegram Bot)**: Send tweet + generated reply to Telegram for approval, rejection, or editing.
-- **Tweet Poster**: Post replies that are approved and not yet sent.
-- **Database Logging**: Use TypeORM with PostgreSQL to store all tweet metadata and replies.
+## 🌟 Features
 
-## Prerequisites
-- Node.js (or Bun)
-- PostgreSQL
-- OpenAI API Key
-- Twitter Bearer Token
-- Telegram Bot Token and Chat ID
+- **Twitter Monitoring**: Track tweets from specific users or hashtags
+- **AI-Powered Replies**: Generate context-aware responses using OpenAI
+- **Telegram Approval**: Review and manage replies through a Telegram bot
+- **Smart Filtering**: Filter tweets based on engagement, keywords, and age
+- **Database Logging**: Store all interactions in PostgreSQL using TypeORM
 
-## Installation
-1. Clone the repository:
+## 🚀 Quick Start
+
+1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd twitter-ai-bot-nestjs
+   cd twitter-agent
    ```
 
-2. Install dependencies:
+2. **Install dependencies**
    ```bash
    bun install
    ```
 
-3. Configure environment variables:
-   Create a `.env` file in the root directory with the following:
-   ```env
-   OPENAI_API_KEY=sk-...
-   TWITTER_BEARER=...
-   TELEGRAM_TOKEN=...
-   TELEGRAM_CHAT_ID=...
-   DATABASE_URL=postgres://...
-   ```
-
-## Project Structure
-- **twitter**: Handles tweet ingestion and filtering.
-- **content-generator**: Manages OpenAI prompt and generation logic.
-- **content-approval**: Handles Telegram bot approval interface.
-- **db**: Manages TypeORM entities and data logic.
-- **tasks**: Contains cron jobs for checking and posting.
-- **config**: Manages configuration and environment variables.
-
-## Usage
-1. Start the application:
+3. **Set up environment variables**
    ```bash
-   bun start
+   cp .env.example .env
+   # Edit .env with your credentials
    ```
 
-2. The bot will monitor Twitter, generate replies, and send them to Telegram for approval.
+4. **Start the application**
+   ```bash
+   # Development
+   bun run start:dev
 
-3. Approve, reject, or edit replies via Telegram.
+   # Production
+   bun run start:prod
+   ```
 
-4. Approved replies will be posted to Twitter.
+## ⚙️ Configuration
 
-## Contributing
-Contributions are welcome! Please open an issue or submit a pull request.
+### Environment Variables
 
-## License
-This project is licensed under the MIT License.
+Create a `.env` file with the following variables:
+
+```env
+# Twitter API
+TWITTER_BEARER_TOKEN=your_bearer_token
+TWITTER_API_KEY=your_api_key
+TWITTER_API_SECRET=your_api_secret
+TWITTER_ACCESS_TOKEN=your_access_token
+TWITTER_ACCESS_SECRET=your_access_secret
+
+# OpenAI
+OPENAI_API_KEY=your_openai_key
+
+# Telegram
+TELEGRAM_TOKEN=your_telegram_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/twitter_bot
+
+# Application
+PORT=3000
+NODE_ENV=development
+```
+
+### Filter Configuration
+
+Configure tweet filtering in `src/config/filter.config.ts`:
+
+```typescript
+export const filterConfig = {
+  engagement: {
+    minLikes: 10,
+    minRetweets: 5,
+    minReplies: 2
+  },
+  keywords: {
+    include: ['ai', 'technology'],
+    exclude: ['spam', 'ad']
+  },
+  age: {
+    maxHours: 24
+  }
+};
+```
+
+## 📁 Project Structure
+
+```
+src/
+├── content-approval/     # Telegram bot and approval workflow
+├── content-generator/    # OpenAI integration and reply generation
+├── db/                  # Database entities and services
+├── tasks/              # Scheduled tasks and cron jobs
+├── twitter/            # Twitter API integration
+└── config/             # Application configuration
+```
+
+## 🔄 Workflow
+
+1. **Tweet Monitoring**
+   - Bot monitors specified Twitter accounts/hashtags
+   - New tweets are filtered based on engagement and keywords
+   - Filtered tweets are stored in the database
+
+2. **Reply Generation**
+   - OpenAI generates context-aware replies
+   - Replies are formatted and stored in the database
+
+3. **Approval Process**
+   - Generated replies are sent to Telegram
+   - Approvers can:
+     - ✅ Approve the reply
+     - ❌ Reject the reply
+     - ✏️ Edit the reply text
+
+4. **Posting**
+   - Approved replies are posted to Twitter
+   - All actions are logged in the database
+
+## 🛠️ Development
+
+### Prerequisites
+
+- Node.js 18+ or Bun
+- PostgreSQL 14+
+- Twitter Developer Account
+- OpenAI API Key
+- Telegram Bot Token
+
+### Commands
+
+```bash
+# Install dependencies
+bun install
+
+# Run in development mode
+bun run start:dev
+
+# Run tests
+bun run test
+
+# Build for production
+bun run build
+
+# Start production server
+bun run start:prod
+```
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📧 Support
+
+For support, please open an issue in the GitHub repository or contact the maintainers.
