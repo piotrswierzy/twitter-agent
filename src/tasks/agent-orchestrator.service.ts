@@ -55,6 +55,12 @@ export class AgentOrchestrator {
             replied: false,
             approved: false,
             posted: false,
+            referenced_tweets: tweet.referenced_tweets?.map(ref => ({
+              type: ref.type as 'replied_to' | 'quoted' | 'retweeted',
+              id: ref.id,
+              text: ref.text,
+              author: ref.author,
+            })),
           });
         } catch (error) {
           this.logger.error(
@@ -139,7 +145,7 @@ export class AgentOrchestrator {
       }
 
       for (const query of twitterMonitoringConfig.queries) {
-        const queryTweets = await this.twitterService.fetchTweetsByQuery(query, {
+        const queryTweets = await this.twitterService.fetchTrendingTweets(query, {
           maxResults: twitterMonitoringConfig.fetchSettings.maxResults,
           sortOrder: twitterMonitoringConfig.fetchSettings.sortOrder,
           startTime: new Date(Date.now() - 1000 * 60 * 60 * 24),
@@ -174,15 +180,20 @@ export class AgentOrchestrator {
     this.logger.debug(`Processing tweet ${tweet.id} from @${tweet.author}`);
 
     // Convert tweet to context for content generation
-    const tweetContext = {
+    const context = {
       id: tweet.id,
       text: tweet.content,
       createdAt: tweet.timestamp,
       author: tweet.author,
+      referenced_tweets: tweet.referenced_tweets?.map(ref => ({
+        type: ref.type,
+        id: ref.id,
+        text: ref.text,
+        author: ref.author,
+      })),
     };
-
     // Generate reply
-    const generatedReply = await this.contentGenerator.generateReply(tweetContext, ['friendly', 'humorous', 'curious']);
+    const generatedReply = await this.contentGenerator.generateReply(context, ['friendly', 'humorous', 'curious']);
     if (!generatedReply) {
       throw new Error('Failed to generate reply');
     }

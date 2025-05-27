@@ -13,6 +13,10 @@ interface TwitterResponse {
     oldest_id: string;
     next_token?: string;
   };
+  includes?: {
+    tweets?: any[];
+    users?: any[];
+  };
 }
 
 /**
@@ -29,6 +33,9 @@ interface Tweet {
     like_count: number;
     quote_count: number;
   };
+  conversation_id?: string;
+  in_reply_to_user_id?: string;
+  referenced_tweets?: { type: string; id: string }[];
 }
 
 /**
@@ -114,7 +121,7 @@ export class TwitterService {
   private buildQueryParams(query: string, options: TwitterQueryOptions = {}) {
     const params: Record<string, string> = {
       query,
-      'tweet.fields': 'created_at,author_id,public_metrics',
+      'tweet.fields': 'created_at,author_id,public_metrics,referenced_tweets',
       max_results: options.maxResults?.toString() || '10',
     };
 
@@ -143,22 +150,42 @@ export class TwitterService {
    */
   async fetchTweetsByUser(username: string, options: TwitterQueryOptions = {}): Promise<TwitterResponse> {
     try {
-      const tweets = await this.client.v2.search(`from:${username}`, {
+      const tweets = await this.client.v2.search(`from:${username} -is:reply`, {
         max_results: options.maxResults || 10,
         start_time: options.startTime?.toISOString(),
         end_time: options.endTime?.toISOString(),
         next_token: options.nextToken,
         sort_order: options.sortOrder,
-        'tweet.fields': ['created_at', 'author_id', 'public_metrics'],
+        'tweet.fields': ['created_at', 'author_id', 'public_metrics', 'referenced_tweets'],
+        expansions: ['referenced_tweets.id', 'referenced_tweets.id.author_id'],
+        'user.fields': ['username', 'name'],
       });
 
+      // Process referenced tweets to include their content and author
+      const processedTweets = tweets.data.data?.map(tweet => {
+        if (tweet.referenced_tweets) {
+          tweet.referenced_tweets = tweet.referenced_tweets.map(ref => {
+            const referencedTweet = tweets.includes?.tweets?.find(t => t.id === ref.id);
+            const author = tweets.includes?.users?.find(u => u.id === referencedTweet?.author_id);
+            return {
+              type: ref.type,
+              id: ref.id,
+              text: referencedTweet?.text || '',
+              author: author?.username || '',
+            };
+          });
+        }
+        return tweet;
+      }) || [];
+
       return {
-        data: tweets.data.data || [],
+        data: processedTweets,
         meta: tweets.data.meta || {
           result_count: 0,
           newest_id: '',
           oldest_id: '',
         },
+        includes: tweets.includes,
       };
     } catch (error) {
       this.logger.error(`Error fetching tweets for user ${username}:`, error);
@@ -181,16 +208,36 @@ export class TwitterService {
         end_time: options.endTime?.toISOString(),
         next_token: options.nextToken,
         sort_order: options.sortOrder,
-        'tweet.fields': ['created_at', 'author_id', 'public_metrics'],
+        'tweet.fields': ['created_at', 'author_id', 'public_metrics', 'referenced_tweets'],
+        expansions: ['referenced_tweets.id', 'referenced_tweets.id.author_id'],
+        'user.fields': ['username', 'name'],
       });
 
+      // Process referenced tweets to include their content and author
+      const processedTweets = tweets.data.data?.map(tweet => {
+        if (tweet.referenced_tweets) {
+          tweet.referenced_tweets = tweet.referenced_tweets.map(ref => {
+            const referencedTweet = tweets.includes?.tweets?.find(t => t.id === ref.id);
+            const author = tweets.includes?.users?.find(u => u.id === referencedTweet?.author_id);
+            return {
+              type: ref.type,
+              id: ref.id,
+              text: referencedTweet?.text || '',
+              author: author?.username || '',
+            };
+          });
+        }
+        return tweet;
+      }) || [];
+
       return {
-        data: tweets.data.data || [],
+        data: processedTweets,
         meta: tweets.data.meta || {
           result_count: 0,
           newest_id: '',
           oldest_id: '',
         },
+        includes: tweets.includes,
       };
     } catch (error) {
       this.logger.error(`Error fetching tweets for hashtag #${hashtag}:`, error);
@@ -213,16 +260,36 @@ export class TwitterService {
         end_time: options.endTime?.toISOString(),
         next_token: options.nextToken,
         sort_order: options.sortOrder,
-        'tweet.fields': ['created_at', 'author_id', 'public_metrics'],
+        'tweet.fields': ['created_at', 'author_id', 'public_metrics', 'referenced_tweets'],
+        expansions: ['referenced_tweets.id', 'referenced_tweets.id.author_id'],
+        'user.fields': ['username', 'name'],
       });
 
+      // Process referenced tweets to include their content and author
+      const processedTweets = tweets.data.data?.map(tweet => {
+        if (tweet.referenced_tweets) {
+          tweet.referenced_tweets = tweet.referenced_tweets.map(ref => {
+            const referencedTweet = tweets.includes?.tweets?.find(t => t.id === ref.id);
+            const author = tweets.includes?.users?.find(u => u.id === referencedTweet?.author_id);
+            return {
+              type: ref.type,
+              id: ref.id,
+              text: referencedTweet?.text || '',
+              author: author?.username || '',
+            };
+          });
+        }
+        return tweet;
+      }) || [];
+
       return {
-        data: tweets.data.data || [],
+        data: processedTweets,
         meta: tweets.data.meta || {
           result_count: 0,
           newest_id: '',
           oldest_id: '',
         },
+        includes: tweets.includes,
       };
     } catch (error) {
       this.logger.error(`Error fetching tweets for query "${query}":`, error);
@@ -230,44 +297,51 @@ export class TwitterService {
     }
   }
 
-  /**
-   * Fetches trending tweets from verified accounts
-   * @param options - Optional parameters for the query
-   * @returns Promise containing the tweets
-   * @throws {Error} If the API request fails
-   */
-  async fetchTrendingTweets(options: TwitterQueryOptions = {}): Promise<TwitterResponse> {
+  async fetchTrendingTweets(query: string, options: TwitterQueryOptions = {}): Promise<TwitterResponse> {
     try {
-      const tweets = await this.client.v2.search('is:verified -is:retweet -is:reply', {
+      const tweets = await this.client.v2.search(`${query} is:verified -is:retweet -is:reply`, {
         max_results: options.maxResults || 10,
         start_time: options.startTime?.toISOString(),
         end_time: options.endTime?.toISOString(),
         next_token: options.nextToken,
-        sort_order: 'relevancy',
-        'tweet.fields': ['created_at', 'author_id', 'public_metrics'],
+        sort_order: options.sortOrder,
+        'tweet.fields': ['created_at', 'author_id', 'public_metrics', 'referenced_tweets'],
+        expansions: ['referenced_tweets.id', 'referenced_tweets.id.author_id'],
+        'user.fields': ['username', 'name'],
       });
 
+      // Process referenced tweets to include their content and author
+      const processedTweets = tweets.data.data?.map(tweet => {
+        if (tweet.referenced_tweets) {
+          tweet.referenced_tweets = tweet.referenced_tweets.map(ref => {
+            const referencedTweet = tweets.includes?.tweets?.find(t => t.id === ref.id);
+            const author = tweets.includes?.users?.find(u => u.id === referencedTweet?.author_id);
+            return {
+              type: ref.type,
+              id: ref.id,
+              text: referencedTweet?.text || '',
+              author: author?.username || '',
+            };
+          });
+        }
+        return tweet;
+      }) || [];
+
       return {
-        data: tweets.data.data || [],
+        data: processedTweets,
         meta: tweets.data.meta || {
           result_count: 0,
           newest_id: '',
           oldest_id: '',
         },
+        includes: tweets.includes,
       };
     } catch (error) {
-      this.logger.error('Error fetching trending tweets:', error);
-      throw new Error(`Failed to fetch trending tweets: ${error.message}`);
+      this.logger.error(`Error fetching tweets for query "${query}":`, error);
+      throw new Error(`Failed to fetch tweets: ${error.message}`);
     }
   }
 
-  /**
-   * Replies to a specific tweet
-   * @param tweetId - The ID of the tweet to reply to
-   * @param replyText - The text content of the reply
-   * @returns Promise containing the created reply tweet
-   * @throws {Error} If the API request fails
-   */
   async replyToTweet(tweetId: string, replyText: string): Promise<any> {
     try {
       const reply = await this.client.v2.reply(replyText, tweetId);
@@ -279,12 +353,6 @@ export class TwitterService {
     }
   }
 
-  /**
-   * Posts a new tweet
-   * @param text - The text content of the tweet
-   * @returns Promise containing the created tweet
-   * @throws {Error} If the API request fails
-   */
   async postTweet(text: string): Promise<any> {
     try {
       const tweet = await this.client.v2.tweet(text);
@@ -296,11 +364,6 @@ export class TwitterService {
     }
   }
 
-  /**
-   * Deletes a tweet
-   * @param tweetId - The ID of the tweet to delete
-   * @throws {Error} If the API request fails
-   */
   async deleteTweet(tweetId: string): Promise<void> {
     try {
       await this.client.v2.delete(tweetId);

@@ -17,6 +17,18 @@ interface TweetContext {
     reply_count: number;
     quote_count: number;
   };
+  conversation?: {
+    id: string;
+    text: string;
+    author: string;
+    created_at?: string;
+  }[];
+  referenced_tweets?: {
+    type: 'replied_to' | 'quoted' | 'retweeted';
+    id: string;
+    text: string;
+    author: string;
+  }[];
 }
 
 /**
@@ -87,25 +99,26 @@ Your Reply: ${ex.reply}
 `).join('\n')}
 
 Key Guidelines:
-1. Keep replies under ${this.maxLength} characters
-2. Use only standard keyboard characters – no special symbols, quotes, or em dashes
-3. Be authentic, grounded, and true to your character
-4. Avoid fluff, abstract statements, and poetic phrasing
-5. Focus on insight, clarity, and practical value
-6. Use dry humor when it sharpens a point, not just to entertain
-7. Be direct. Don't sugarcoat. Don't overexplain
-8. Question vague assumptions or bad ideas, calmly and clearly
-9. Match the tone of the original tweet, but bring a sharper perspective
-10. Prioritize brevity – most replies should be under 3 sentences
+1. Keep replies short under ${this.maxLength} characters
+2. Use only standard keyboard characters. No special symbols or formatting
+3. Be blunt and grounded. Say what you mean
+4. No fluff, no vague takes, no poetic nonsense
+5. Focus on clarity, not style
+6. Use dry humor only if it sharpens the point
+7. Skip intros. Just say the thing
+8. Call out weak logic or buzzwords, calmly
+9. Match the tweet’s tone, but cut through noise
+10. Most replies should be 1–2 short lines. 3 max
 
 Formatting Rules:
-- No emojis or exclamation marks
-- Never use metaphors or motivational language
-- Write like you're replying in a fast-paced group chat
-- Skip introductions like "Hey" or "I think..." — go straight to the point
+- No emojis
+- No exclamation marks
+- No metaphors, quotes, or motivational language
+- Don’t start with “hey” or “I think”, get to it
 
 Final Note:
-Do NOT try to sound poetic, clever, or overly nice. This is not customer service. This is a grounded, smart, dry-witted founder giving real thoughts. Clarity > charm. Insight > inspiration.`;
+Don’t try to sound smart. Don’t try to sound nice. This isn’t marketing.
+Be clear. Be dry. Be real. Say less. Mean it more. `;
 }
 
 /**
@@ -127,11 +140,62 @@ Engagement:
 - Quotes: ${tweetContext.public_metrics.quote_count}`
     : '';
 
+  let context = '';
+  
+  // Build thread context in chronological order
+  if (tweetContext.referenced_tweets?.length || tweetContext.conversation?.length) {
+    context += '\nThread Context:\n';
+    
+    // First, add referenced tweets (quotes, replies) if available
+    if (tweetContext.referenced_tweets?.length) {
+      // Sort referenced tweets by type to show replies first, then quotes
+      const sortedRefs = [...tweetContext.referenced_tweets].sort((a, b) => {
+        const typeOrder = { 'replied_to': 0, 'quoted': 1, 'retweeted': 2 };
+        return typeOrder[a.type] - typeOrder[b.type];
+      });
+
+      sortedRefs.forEach(ref => {
+        const refType = ref.type === 'replied_to' ? 'Reply to' : 
+                       ref.type === 'quoted' ? 'Quote of' : 
+                       'Retweet of';
+        context += `[${refType}] @${ref.author}: "${ref.text}"\n`;
+      });
+    }
+
+    // Then add conversation context if available
+    if (tweetContext.conversation?.length) {
+      // Sort conversation by timestamp if available
+      const sortedConversation = [...tweetContext.conversation].sort((a, b) => {
+        if (a.created_at && b.created_at) {
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        }
+        return 0;
+      });
+
+      context += '\nConversation Flow:\n';
+      sortedConversation.forEach((tweet, index) => {
+        const timestamp = tweet.created_at 
+          ? `[${new Date(tweet.created_at).toLocaleTimeString()}] `
+          : '';
+        context += `${timestamp}@${tweet.author}: "${tweet.text}"\n`;
+      });
+    }
+  }
+
+  // Add thread structure information
+  if (tweetContext.referenced_tweets?.some(ref => ref.type === 'replied_to')) {
+    context += '\nNote: This is a reply in a conversation thread.';
+  }
+  if (tweetContext.referenced_tweets?.some(ref => ref.type === 'quoted')) {
+    context += '\nNote: This tweet quotes another tweet.';
+  }
+
   return `Tweet by @${tweetContext.author}:
 "${tweetContext.text}"
 
 ${timestamp}
 ${engagement}
+${context}
 
 Write a short, sharp reply that sounds like Peter from BlockyDevs.
 Stay grounded, insightful, and direct — no fluff, no hype.

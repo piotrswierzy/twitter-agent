@@ -112,7 +112,10 @@ export class TelegramApprovalStrategy implements ApprovalStrategy, OnModuleInit 
             message.chat.id,
             message.message_id,
             '✅ Reply approved! It will be posted shortly.',
-            { parse_mode: 'HTML' }
+            { 
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: [] }
+            }
           );
           break;
         case 'reject':
@@ -121,7 +124,10 @@ export class TelegramApprovalStrategy implements ApprovalStrategy, OnModuleInit 
             message.chat.id,
             message.message_id,
             '❌ Reply rejected.',
-            { parse_mode: 'HTML' }
+            { 
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: [] }
+            }
           );
           break;
         case 'edit':

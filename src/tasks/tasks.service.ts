@@ -19,7 +19,7 @@ export class TasksService {
    * 2. Generates replies
    * 3. Sends them for approval
    */
-  @Cron(CronExpression.EVERY_8_HOURS, { waitForCompletion: true })
+  @Cron(CronExpression.EVERY_HOUR, { waitForCompletion: true })
   async handleProcessNewTweets() {
     try {
       this.logger.log('Starting scheduled task: Process new tweets');
@@ -36,7 +36,7 @@ export class TasksService {
    * 1. Fetches approved but not posted replies
    * 2. Posts them to Twitter
    */
-  @Cron(CronExpression.EVERY_30_MINUTES,  { waitForCompletion: true })
+  @Cron(CronExpression.EVERY_5_MINUTES,  { waitForCompletion: true })
   async handlePostApprovedReplies() {
     try {
       this.logger.log('Starting scheduled task: Post approved replies');

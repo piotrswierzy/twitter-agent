@@ -27,6 +27,14 @@ export class Tweet {
   @Column({ default: false })
   posted: boolean;
 
+  @Column({ type: 'jsonb', nullable: true })
+  referenced_tweets?: {
+    type: 'replied_to' | 'quoted' | 'retweeted';
+    id: string;
+    text: string;
+    author: string;
+  }[];
+
   @OneToMany(() => Reply, (reply) => reply.tweet)
   replies: Reply[];
 } 

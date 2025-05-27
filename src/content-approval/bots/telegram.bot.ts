@@ -144,14 +144,19 @@ export class TelegramBotService implements OnModuleInit {
   /**
    * Edits an existing message in a chat.
    * 
-   * @param chatId The chat ID containing the message
+   * @param chatId The chat ID where the message is located
    * @param messageId The ID of the message to edit
    * @param text The new text for the message
    * @param options Additional message options (parse mode, keyboard, etc.)
    * @returns Promise resolving to the edited message
    * @throws Error if message editing fails
    */
-  async editMessage(chatId: string | number, messageId: number, text: string, options?: TelegramBot.EditMessageTextOptions) {
+  async editMessage(
+    chatId: string | number,
+    messageId: number,
+    text: string,
+    options?: TelegramBot.EditMessageTextOptions,
+  ) {
     this.ensureInitialized();
     try {
       const message = await this.bot.editMessageText(text, {
@@ -162,7 +167,15 @@ export class TelegramBotService implements OnModuleInit {
       this.logger.debug(`Message ${messageId} edited in chat ${chatId}`);
       return message;
     } catch (error) {
-      this.logger.error(`Failed to edit message ${messageId} in chat ${chatId}: ${error.message}`, error.stack);
+      // Ignore "message not modified" error as it's not a real error
+      if (error.message?.includes('message is not modified')) {
+        this.logger.debug(`Message ${messageId} was not modified (no changes)`);
+        return;
+      }
+      this.logger.error(
+        `Failed to edit message ${messageId} in chat ${chatId}: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
