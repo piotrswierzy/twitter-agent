@@ -4,6 +4,12 @@ import { Repository } from 'typeorm';
 import { Tweet } from './entities/tweet.entity';
 import { Reply, ReplyMetadata } from './entities/reply.entity';
 
+interface ReplyQuery {
+  approved?: boolean;
+  posted?: boolean;
+  scheduledFor?: { $lte: Date };
+}
+
 /**
  * Service responsible for database operations related to tweets and replies.
  */
@@ -78,12 +84,23 @@ export class DbService {
   async getReplies(criteria: {
     approved?: boolean;
     posted?: boolean;
+    scheduledFor?: { $lte: Date };
   }): Promise<Reply[]> {
-    return this.replyRepository.find({
-      where: criteria,
-      relations: ['tweet'],
-      order: { createdAt: 'ASC' },
-    });
+    const query = this.replyRepository.createQueryBuilder('reply')
+      .leftJoinAndSelect('reply.tweet', 'tweet')
+      .orderBy('reply.createdAt', 'ASC');
+
+    if (criteria.approved !== undefined) {
+      query.andWhere('reply.approved = :approved', { approved: criteria.approved });
+    }
+    if (criteria.posted !== undefined) {
+      query.andWhere('reply.posted = :posted', { posted: criteria.posted });
+    }
+    if (criteria.scheduledFor?.$lte) {
+      query.andWhere('reply.scheduledFor <= :scheduledFor', { scheduledFor: criteria.scheduledFor.$lte });
+    }
+
+    return query.getMany();
   }
 
   /**

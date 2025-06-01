@@ -7,6 +7,7 @@ import { TweetFilterService } from '../twitter/tweet-filter.service';
 import { Tweet } from '../db/entities/tweet.entity';
 import { Reply, ReplyMetadata } from '../db/entities/reply.entity';
 import { twitterMonitoringConfig } from '../config/twitter-monitoring.config';
+import { PostingSchedulerService } from './posting-scheduler.service';
 
 /**
  * Service responsible for orchestrating the Twitter AI agent workflow.
@@ -29,6 +30,7 @@ export class AgentOrchestrator {
     private readonly contentApproval: ContentApprovalService,
     private readonly twitterService: TwitterService,
     private readonly tweetFilter: TweetFilterService,
+    private readonly postingScheduler: PostingSchedulerService,
   ) {}
 
   /**
@@ -217,39 +219,7 @@ export class AgentOrchestrator {
     await this.dbService.updateTweet(tweet.id, { replied: true });
   }
 
-  /**
-   * Orchestrates the posting of approved replies to Twitter.
-   * This method is designed to be called by scheduled tasks.
-   * 
-   * @returns Promise resolving to the number of replies posted
-   */
-  async postApprovedReplies(): Promise<number> {
-    try {
-      // Get approved but not posted replies
-      const replies = await this.dbService.getReplies({ approved: true, posted: false });
-      this.logger.log(`Found ${replies.length} approved replies to post`);
 
-      let postedCount = 0;
-
-      for (const reply of replies) {
-        try {
-          await this.postReply(reply);
-          postedCount++;
-        } catch (error) {
-          this.logger.error(
-            `Failed to post reply ${reply.id}: ${error.message}`,
-            error.stack,
-          );
-          // Continue with next reply even if one fails
-        }
-      }
-
-      return postedCount;
-    } catch (error) {
-      this.logger.error('Failed to post approved replies', error.stack);
-      throw error;
-    }
-  }
 
   /**
    * Posts a single approved reply to Twitter.
@@ -273,6 +243,46 @@ export class AgentOrchestrator {
         `Failed to post reply ${reply.id}: ${error.message}`,
         error.stack,
       );
+      throw error;
+    }
+  }
+
+
+  /**
+   * Orchestrates the posting of approved replies to Twitter.
+   * This method is designed to be called by scheduled tasks.
+   * 
+   * @returns Promise resolving to the number of replies posted
+   */
+  async postApprovedReplies(): Promise<number> {
+    try {
+      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+      // Get approved but not posted replies that are due
+      const replies = await this.dbService.getReplies({ 
+        approved: true, 
+        posted: false,
+        scheduledFor: { $lte: now } // Only get replies that are due
+      });
+      this.logger.log(`Found ${replies.length} approved replies due for posting`);
+      let postedCount = 0;
+      for (const reply of replies) {
+        try {
+          const delayMs = Math.floor(Math.random() * 119000) + 1000; // Random ms between 1000-120000 (1s to 2min)
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          await this.postReply(reply);
+          postedCount++;
+          this.logger.debug(`Waited ${delayMs}ms before next post`);
+        } catch (error) {
+          this.logger.error(
+            `Failed to post reply ${reply.id}: ${error.message}`,
+            error.stack,
+          );
+          // Continue with next reply even if one fails
+        }
+      }
+      return postedCount;
+    } catch (error) {
+      this.logger.error('Failed to post approved replies', error.stack);
       throw error;
     }
   }

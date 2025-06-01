@@ -34,6 +34,9 @@ export class Reply {
   @Column({ nullable: true })
   postedAt: Date;
 
+  @Column({ nullable: true })
+  scheduledFor: Date;
+
   @Column({ type: 'jsonb', nullable: true })
   metadata: ReplyMetadata;
 } 

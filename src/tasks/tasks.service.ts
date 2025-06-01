@@ -30,16 +30,11 @@ export class TasksService {
     }
   }
 
-  /**
-   * Scheduled task that posts approved replies every minute.
-   * This task:
-   * 1. Fetches approved but not posted replies
-   * 2. Posts them to Twitter
-   */
-  @Cron(CronExpression.EVERY_5_MINUTES,  { waitForCompletion: true })
+  @Cron(CronExpression.EVERY_MINUTE, { waitForCompletion: true })
   async handlePostApprovedReplies() {
     try {
       this.logger.log('Starting scheduled task: Post approved replies');
+      console.log('date now', Date.now());
       const postedCount = await this.agentOrchestrator.postApprovedReplies();
       this.logger.log(`Completed posting ${postedCount} replies`);
     } catch (error) {

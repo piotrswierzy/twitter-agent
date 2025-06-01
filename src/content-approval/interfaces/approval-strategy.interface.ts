@@ -18,8 +18,9 @@ export interface ApprovalStrategy {
    * Handles the approval of a reply.
    * @param tweetId The ID of the tweet being replied to
    * @param replyId The ID of the reply being approved
+   * @returns Promise resolving to the scheduled posting time
    */
-  handleApprove(tweetId: string, replyId: string): Promise<void>;
+  handleApprove(tweetId: string, replyId: string): Promise<Date>;
 
   /**
    * Handles the rejection of a reply.

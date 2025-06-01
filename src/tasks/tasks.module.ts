@@ -1,11 +1,13 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { AgentOrchestrator } from './agent-orchestrator.service';
-import { TasksService } from './tasks.service';
+import { ConfigModule } from '@nestjs/config';
 import { DbModule } from '../db/db.module';
-import { ContentGeneratorModule } from '../content-generator/content-generator.module';
-import { ContentApprovalModule } from '../content-approval/content-approval.module';
 import { TwitterModule } from '../twitter/twitter.module';
+import { ContentApprovalModule } from '../content-approval/content-approval.module';
+import { ContentGeneratorModule } from '../content-generator/content-generator.module';
+import { TasksService } from './tasks.service';
+import { AgentOrchestrator } from './agent-orchestrator.service';
+import { PostingSchedulerService } from './posting-scheduler.service';
 
 /**
  * Module responsible for managing scheduled tasks and background processes.
@@ -17,12 +19,21 @@ import { TwitterModule } from '../twitter/twitter.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    ConfigModule,
     DbModule,
-    ContentGeneratorModule,
-    ContentApprovalModule,
     TwitterModule,
+    ContentGeneratorModule,
+    forwardRef(() => ContentApprovalModule),
   ],
-  providers: [AgentOrchestrator, TasksService],
-  exports: [AgentOrchestrator],
+  providers: [
+    TasksService,
+    AgentOrchestrator,
+    PostingSchedulerService,
+  ],
+  exports: [
+    TasksService,
+    AgentOrchestrator,
+    PostingSchedulerService,
+  ],
 })
 export class TasksModule {}

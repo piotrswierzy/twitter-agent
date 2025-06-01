@@ -8,6 +8,7 @@ import { Reply } from '../../db/entities/reply.entity';
 import { TelegramBotService } from '../bots/telegram.bot';
 import TelegramBot from 'node-telegram-bot-api';
 import { ApprovalMessage } from '../interfaces/approval-message.interface';
+import { PostingSchedulerService } from '../../tasks/posting-scheduler.service';
 
 /**
  * Telegram-specific implementation of the approval strategy.
@@ -22,6 +23,7 @@ export class TelegramApprovalStrategy implements ApprovalStrategy, OnModuleInit 
     private readonly dbService: DbService,
     private readonly twitterService: TwitterService,
     private readonly telegramBot: TelegramBotService,
+    private readonly postingScheduler: PostingSchedulerService,
   ) {}
 
   async onModuleInit() {
@@ -50,15 +52,18 @@ export class TelegramApprovalStrategy implements ApprovalStrategy, OnModuleInit 
     }
   }
 
-  async handleApprove(tweetId: string, replyId: string): Promise<void> {
+  async handleApprove(tweetId: string, replyId: string): Promise<Date> {
     const reply = await this.dbService.getReplyById(replyId);
     if (!reply) {
       throw new Error(`Reply ${replyId} not found`);
     }
 
-    // Update reply status to approved
-    await this.dbService.updateReply(replyId, { approved: true });
-    this.logger.log(`Reply ${replyId} approved for tweet ${tweetId}`);
+    // Schedule the reply using PostingSchedulerService
+    const scheduledTime = await this.postingScheduler.scheduleReply(reply);
+    await this.dbService.updateReply(replyId, { approved: true });    
+    
+    this.logger.log(`Reply ${replyId} approved for tweet ${tweetId}, scheduled for ${scheduledTime}`);
+    return scheduledTime;
   }
 
   async handleReject(tweetId: string, replyId: string): Promise<void> {
@@ -107,11 +112,11 @@ export class TelegramApprovalStrategy implements ApprovalStrategy, OnModuleInit 
 
       switch (action) {
         case 'approve':
-          await this.handleApprove(tweetId, replyId);
+          const scheduledTime = await this.handleApprove(tweetId, replyId);
           await this.telegramBot.editMessage(
             message.chat.id,
             message.message_id,
-            '✅ Reply approved! It will be posted shortly.',
+            `✅ Reply approved! It will be posted at ${scheduledTime.toLocaleString()}.`,
             { 
               parse_mode: 'HTML',
               reply_markup: { inline_keyboard: [] }
